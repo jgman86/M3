@@ -18,7 +18,7 @@ setwd(dirname(rstudioapi::getSourceEditorContext()$path))
 # set stan options
 options(mc.cores = parallel::detectCores())
 options(buildtools.check = function(action) TRUE)
-
+# add option to prevent recompiling the models 
 # Load Functions
 
 source("M3_functions.R")
