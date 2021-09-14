@@ -27,10 +27,10 @@ source("M3_functions.R")
 
 N <- c(5)
 K <- c(8,16,32,64)
-nRetrievals <- 100
+nRetrievals <- 500
 minFT <- 0.5
 maxFT <- 2
-nFT <- c(2,4) # 2,4,10 Conditions between 0.2 and 2
+nFT <- c(2,4,6) # 2,4,10 Conditions between 0.2 and 2
 SampleSize <- 100
 reps2con <- 100
 n_sim <- length(N)*length(K)*length(nRetrievals)*length(nFT)*reps2con
@@ -55,10 +55,10 @@ sigR <- c(0.125,0.5) # abhänbgig von removal parameter -> analog zu c und a
 sigB <- c(0.0001, 0.1)
 
 # Test Cons (500 Rets, 16 NPLs, 3 IOPs, 4 FT Cons)
-i <- 3
-j <- 5
+i <- 1
+j <- 4
 k <- 4
-l <- 1
+l <- 3
 n <- 2
 
 
@@ -136,7 +136,7 @@ for(i in 1:length(N))
           # Save Simulation Conditions----
           conN <- N[i]
           conK <- K[j]
-          conRet <- 100
+          conRet <- 500
           con_nFT <- nFT[l]
           conFT <- seq(from = minFT, to = maxFT, length.out = con_nFT) # eventuell log scale 0.2 0.8 2.4 oder so?
           
@@ -239,9 +239,9 @@ for(i in 1:length(N))
           
           # Fit-The-Shit----
 tic()
-                    fit_M3 <- stan(file = "M3_ComplexSpan_EE_LKJ_Cholesky_BF.stan",data=stan.dat,
+                    fit_M3 <- stan(file = "Model Scripts/M3_ComplexSpan_EE_LKJ_Cholesky_BF.stan",data=stan.dat,
                          warmup = 2000, iter = 4000,
-                         chains = 4,refresh = 100, init=init_fun, control=list(metric="unit_e"))
+                         chains = 4,refresh = 100, init=init_fun)
 toc()
           # Extract Posterior Parameters from fit object---- 
           
@@ -265,10 +265,11 @@ toc()
           means_e <- colMeans(post_samples$subj_pars[,,3])
           means_r <- colMeans(post_samples$subj_pars[,,4])
           
-          # cor(means_c, parms[,1])
-          # cor(means_a, parms[,2])      
-          # cor(means_e, parms[,4])      
-          # cor(means_r, parms[,5])      
+           cor(means_c, parms[,1])
+           cor(means_a, parms[,2])      
+          
+          cor(means_e, parms[,4])      
+          cor(means_r, parms[,5])      
          
           
           
@@ -277,10 +278,10 @@ toc()
           est_cor_ca <- rstan::get_posterior_mean(fit_M3, par=c("Omega[1,2]"))[5]
           #est_cor_cf <- rstan::get_posterior_mean(fit_M3, par=c("Omega[1,3]"))[5]
          # est_cor_af  <- rstan::get_posterior_mean(fit_M3, par=c("Omega[2,3]"))[5]
-          est_cor_ce  <- rstan::get_posterior_mean(fit_M3, par=c("Omega[1,4]"))[5]
-          est_cor_cr  <- rstan::get_posterior_mean(fit_M3, par=c("Omega[1,5]"))[5]
-          est_cor_ae  <- rstan::get_posterior_mean(fit_M3, par=c("Omega[2,4]"))[5]
-          est_cor_ar  <- rstan::get_posterior_mean(fit_M3, par=c("Omega[2,5]"))[5]
+          est_cor_ce  <- rstan::get_posterior_mean(fit_M3, par=c("Omega[1,3]"))[5]
+          est_cor_cr  <- rstan::get_posterior_mean(fit_M3, par=c("Omega[1,4]"))[5]
+          est_cor_ae  <- rstan::get_posterior_mean(fit_M3, par=c("Omega[2,3]"))[5]
+          est_cor_ar  <- rstan::get_posterior_mean(fit_M3, par=c("Omega[2,4]"))[5]
          # est_cor_fe  <- rstan::get_posterior_mean(fit_M3, par=c("Omega[3,4]"))[5]
           #est_cor_fr  <- rstan::get_posterior_mean(fit_M3, par=c("Omega[3,5]"))[5]
           
@@ -297,10 +298,10 @@ toc()
           HDI_cor_ca <- round(as.vector(unlist(hdi(extract(fit_M3, pars=c("Omega[1,2]"),inc_warmup=F),credMass= 0.95))),2)
          # HDI_cor_cf <- round(as.vector(unlist(hdi(extract(fit_M3, pars=c("Omega[1,3]"),inc_warmup=F),credMass= 0.95))),2)
          # HDI_cor_af <- round(as.vector(unlist(hdi(extract(fit_M3, pars=c("Omega[2,3]"),inc_warmup=F),credMass= 0.95))),2)
-          HDI_cor_ce <- round(as.vector(unlist(hdi(extract(fit_M3, pars=c("Omega[1,4]"),inc_warmup=F),credMass= 0.95))),2)
-          HDI_cor_cr <- round(as.vector(unlist(hdi(extract(fit_M3, pars=c("Omega[1,5]"),inc_warmup=F),credMass= 0.95))),2)
-          HDI_cor_ae <- round(as.vector(unlist(hdi(extract(fit_M3, pars=c("Omega[2,4]"),inc_warmup=F),credMass= 0.95))),2)
-          HDI_cor_ar <- round(as.vector(unlist(hdi(extract(fit_M3, pars=c("Omega[2,5]"),inc_warmup=F),credMass= 0.95))),2)
+          HDI_cor_ce <- round(as.vector(unlist(hdi(extract(fit_M3, pars=c("Omega[1,3]"),inc_warmup=F),credMass= 0.95))),2)
+          HDI_cor_cr <- round(as.vector(unlist(hdi(extract(fit_M3, pars=c("Omega[1,4]"),inc_warmup=F),credMass= 0.95))),2)
+          HDI_cor_ae <- round(as.vector(unlist(hdi(extract(fit_M3, pars=c("Omega[2,3]"),inc_warmup=F),credMass= 0.95))),2)
+          HDI_cor_ar <- round(as.vector(unlist(hdi(extract(fit_M3, pars=c("Omega[2,4]"),inc_warmup=F),credMass= 0.95))),2)
           #HDI_cor_fe <- round(as.vector(unlist(hdi(extract(fit_M3, pars=c("Omega[3,4]"),inc_warmup=F),credMass= 0.95))),2)
           #HDI_cor_fr <- round(as.vector(unlist(hdi(extract(fit_M3, pars=c("Omega[3,5]"),inc_warmup=F),credMass= 0.95))),2)
           
@@ -334,11 +335,6 @@ toc()
             
           }
           
-          for (f in 1:SampleSize)
-          {
-            HDI_include_f[f]<-isTRUE(between(means_f[f], HDI_f[f,1], HDI_f[f,2]))
-            
-          }
           
           for (f in 1:SampleSize)
           {
@@ -356,9 +352,8 @@ toc()
           
           mode_c <- posterior.mode(post_samples$subj_pars[,,1])
           mode_a <- posterior.mode(post_samples$subj_pars[,,2])
-         # mode_f <- posterior.mode(post_samples$f)
-          mode_e <- posterior.mode(post_samples$subj_pars[,,4])
-          mode_r <- posterior.mode(post_samples$subj_pars[,,5])
+          mode_e <- posterior.mode(post_samples$subj_pars[,,3])
+          mode_r <- posterior.mode(post_samples$subj_pars[,,4])
           
           # Extract rhat ----
           
