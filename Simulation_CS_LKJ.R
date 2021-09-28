@@ -27,21 +27,30 @@ options(mc.cores = parallel::detectCores())
 # we can create a default output directory path, here:
 default.out = paste("/home/", Sys.getenv("USER"), sep="", collapse=NULL)
 
+# TODO: The long options '--nope' and '--kope' are only named
+#       because they have to be there.
+
 option_list <- list(
     make_option(c("-o", "--outdir"), action="store",
                   default=default.out), 
-    make_option(c("-N"), type="integer",
-                  help="helpmessage goes here",
+    make_option(c("-N", "--nope"), type="integer", default=0,
+                  help="helpmessage goes here, [default %default]",
                   metavar="number"),
-    make_option(c("-K"), type="integer",
+    make_option(c("-K", "--kope"), type="integer",
                   help="helpmessage goes here",
                   metavar="number"),
     make_option(c("-n", "--nRetrievals"), type="integer",
                   help="helpmessage goes here",
-                  metavar="number"),
-
+                  metavar="number")
                     )
 
+args <- parse_args(OptionParser(option_list=option_list))
+
+# note, now you can access the variables like
+# TODO: adjust 'nope' and 'kope' according to the changes above
+N <- args$nope
+K <- args$kope
+nRetrievals <- args$nRetrievals
 
 # Load functions
 
