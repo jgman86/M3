@@ -1,0 +1,3 @@
+Notes: 
+- jobs should have a run time >= 10 min.
+- adjust code accordingly: maybe the fourth loop in the master script is unnecessary and be rather placed within the code
