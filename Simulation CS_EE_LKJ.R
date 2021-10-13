@@ -7,12 +7,53 @@ library(HDInterval)
 library(MCMCglmm)
 library(rstan)
 library(psych)
+library(optparse) # to create a command line interface
+library(sys) # to infer system environment variables
+library(compiler) # to accelerate using a just in time compiler
 
 # start fresh
 rm(list=ls())   # clean up workspace
 
-# set working directory to source file location
-setwd(dirname(rstudioapi::getSourceEditorContext()$path))
+#  create a default output directory path, here:
+default.out = paste("/lustre/project/m2_jgu-sim3/CS_EE/", sep="", collapse=NULL)
+
+# TODO: The long options '--nope' and '--kope' are only named
+#       because they have to be there.
+
+option_list <- list(
+  make_option(c("-o", "--outdir"), action="store",
+              default=default.out), 
+  make_option(c("-N", "--DIOP"), type="integer", default=0,
+              help="helpmessage goes here - comment to understand, [default %default]",
+              metavar="number"),
+  make_option(c("-K", "--NPL"), type="integer",
+              help="helpmessage goes here",
+              metavar="number"),
+  make_option(c("-R", "--nRetrievals"), type="integer", default = 100,
+              help="helpmessage goes here",
+              metavar="number"),
+  make_option(c("-C", "--nCons"), type="integer",
+              help="helpmessage goes here",
+              metavar="number"),
+  make_option(c("-V", "--Reps2Con"), type="integer", default = 100,
+              help="helpmessage goes here",
+              metavar="number")
+)
+
+args <- parse_args(OptionParser(option_list=option_list))
+
+# note, now you can access the variables like
+# TODO: adjust 'nope' and 'kope' according to the changes above
+
+
+N <- args$DIOP
+K <- args$NPLs
+nCons <- args&
+nRetrievals <- args$nRetrievals
+
+
+
+
 
 
 # set stan options
@@ -25,7 +66,7 @@ source("M3_functions.R")
 
 # Specify Simulation Factors----
 
-N <- c(5)
+N <- c(1,2,3,4,5)
 K <- c(8,16,32,64)
 nRetrievals <- 100
 minFT <- 0.5
@@ -112,14 +153,14 @@ colnames(hyper_pars) <-c("Repetition","N","K","Retrievals","n_conFT","FT","meanP
 tic()
 # Simulation ----
 
-for(i in 1:length(N)) 
-{
-  for (j in 1:length(K)) 
-  {
+# for(i in 1:length(N)) # Muss weg wil in jb script
+# {
+#   for (j in 1:length(K)) 
+#   {
       for(l in 1:length(nFT))
       {
-        for (n in 1:reps2con)  
-        {
+        # for (n in 1:reps2con)  
+        # {
           
           # Set Seed for pseudo randomized processes
           time <- Sys.time()
