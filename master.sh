@@ -1,12 +1,19 @@
 #!/bin/bash
 
-declare -ar N=(1 2 3 4 5)
-declare -ar K=(1 2 4 8 20)
-nRetrievals=100
-nCons=2
+#SBATCH -p parallel
+#SBATCH -C broadwell
+#SBATCH -n 1
+#SBATCH -c 40
+#SBATCH -t 05:30:00              # Run time (hh:mm:ss)
 
-# Kann Weg
-#declare -ar nCons=(2 4)
+
+#SBATCH -A m2_jgu-sim3
+
+declare -ar N=(1 2)
+declare -ar K=(8 20)
+declare -ar nCon=(2 4)
+declare -ar nRetrievals=(100)
+
 
 # now submit jobs for every permutation
 # we keep track:
@@ -18,11 +25,12 @@ account=$(sacctmgr -n -s list user $USER format=account%30| grep -v none | head 
 
 for n in "${N[@]}"; do
     for k in "${K[@]}"; do
-              for reps2con in $(seq 1 100); do
-                jobname="stansim.${n}.${k}.${nr}.${reps2con}"
+      for j in "${nCons[@]}"; do
+              for reps2con in $(seq 1 10); do
+                jobname="stansim.${n}.${k}.${nr}.${nCon}.${reps2con}"
                 slurmout="${jobname}.%j.out"
                 if [ ! -e ${slurout} ]; then
-                    sbatch -A "$account" -J "$jobname" -o "$slurmout" jobscript.sh "$n" "$k" "$nRetrievals" "$nCons"
+                    sbatch -A "$account" -J "$jobname" -o "$slurmout" jobscript.sh "$n" "$k" "$nRetrievals" "$nCon"
                     njobs=$((njobs + 1))
                     if [ $njobs -gt 10000 ]; then
                        exit
@@ -31,3 +39,5 @@ for n in "${N[@]}"; do
             done
         done
     done
+done
+    

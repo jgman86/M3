@@ -1,0 +1,641 @@
+
+R version 4.0.3 (2020-10-10) -- "Bunny-Wunnies Freak Out"
+Copyright (C) 2020 The R Foundation for Statistical Computing
+Platform: x86_64-pc-linux-gnu (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+> library(brms)
+Loading required package: Rcpp
+Loading 'brms' package (version 2.14.4). Useful instructions
+can be found by typing help('brms'). A more detailed introduction
+to the package is available through vignette('brms_overview').
+
+Attaching package: ‘brms’
+
+The following object is masked from ‘package:stats’:
+
+    ar
+
+> library(tidyverse)
+── Attaching packages ─────────────────────────────────────── tidyverse 1.3.0 ──
+✔ ggplot2 3.3.2     ✔ purrr   0.3.4
+✔ tibble  3.0.4     ✔ dplyr   1.0.2
+✔ tidyr   1.1.2     ✔ stringr 1.4.0
+✔ readr   1.4.0     ✔ forcats 0.5.0
+── Conflicts ────────────────────────────────────────── tidyverse_conflicts() ──
+✖ dplyr::filter() masks stats::filter()
+✖ dplyr::lag()    masks stats::lag()
+> library(bayesplot)
+This is bayesplot version 1.7.2
+- Online documentation and vignettes at mc-stan.org/bayesplot
+- bayesplot theme set to bayesplot::theme_default()
+   * Does _not_ affect other ggplot2 plots
+   * See ?bayesplot_theme_set for details on theme setting
+> library(progress)
+> library(tictoc)
+> library(HDInterval)
+> library(MCMCglmm)
+Loading required package: Matrix
+
+Attaching package: ‘Matrix’
+
+The following objects are masked from ‘package:tidyr’:
+
+    expand, pack, unpack
+
+Loading required package: coda
+Loading required package: ape
+
+Attaching package: ‘MCMCglmm’
+
+The following object is masked from ‘package:brms’:
+
+    me
+
+> library(rstan)
+Loading required package: StanHeaders
+rstan (Version 2.21.2, GitRev: 2e1f913d3ca3)
+For execution on a local, multicore CPU with excess RAM we recommend calling
+options(mc.cores = parallel::detectCores()).
+To avoid recompilation of unchanged Stan programs, we recommend calling
+rstan_options(auto_write = TRUE)
+
+Attaching package: ‘rstan’
+
+The following object is masked from ‘package:coda’:
+
+    traceplot
+
+The following object is masked from ‘package:tidyr’:
+
+    extract
+
+> library(psych)
+
+Attaching package: ‘psych’
+
+The following object is masked from ‘package:rstan’:
+
+    lookup
+
+The following objects are masked from ‘package:ggplot2’:
+
+    %+%, alpha
+
+The following object is masked from ‘package:brms’:
+
+    cs
+
+> library(optparse) # to create a command line interface
+> library(sys) # to infer system environment variables
+> library(compiler) # to accelerate using a just in time compiler
+> 
+> # start fresh
+> rm(list=ls())   # clean up workspace
+> 
+> 
+> # set stan options
+> options(mc.cores = parallel::detectCores())
+> options(buildtools.check = function(action) TRUE)
+> # add option to prevent recompiling the models 
+> # Load Functions
+> 
+> #  create a default output directory path, here:
+> default.out = paste("/lustre/project/m2_jgu-sim3/CS_EE/", sep="", collapse=NULL)
+> 
+> # TODO: The long options '--nope' and '--kope' are only named
+> #       because they have to be there.
+> 
+> option_list <- list(
++   make_option(c("-o", "--outdir"), action="store",
++               default=default.out), 
++   make_option(c("-N", "--DIOP"), type="integer", default=4,
++               help="helpmessage goes here - comment to understand, [default %default]",
++               metavar="number"),
++   make_option(c("-K", "--NPL"), type="integer", default = 8,
++               help="helpmessage goes here",
++               metavar="number"),
++   make_option(c("-R", "--nRetrievals"), type="integer", default = 100,
++               help="helpmessage goes here",
++               metavar="number"),
++   make_option(c("-C", "--nCons"), type="integer", default = 2,
++               help="helpmessage goes here",
++               metavar="number"),
++   make_option(c("-V", "--Reps2Con"), type="integer", default = 10,
++               help="helpmessage goes here",
++               metavar="number")
++ )
+> 
+> args <- parse_args(OptionParser(option_list=option_list))
+> 
+> # note, now you can access the variables like
+> # TODO: adjust 'nope' and 'kope' according to the changes above
+> 
+> 
+> N <- args$DIOP
+> K <- args$NPL
+> nFT <- args$nCons
+> nRetrievals <- args$nRetrievals
+> reps2Con <- args$Reps2Con
+> 
+> source("M3_functions.R")
+> 
+> # Specify Simulation Factors----
+> 
+> #N <- c(1,2,3,4,5)
+> #K <- c(8,16,32,64)
+> #nRetrievals <- 100
+> minFT <- 0.5
+> maxFT <- 2
+> #nFT <- c(2,4) # 2,4,10 Conditions between 0.2 and 2
+> SampleSize <- 100
+> #reps2con <- 100
+> n_sim <- length(N)*length(K)*length(nRetrievals)*length(nFT)*reps2Con
+> n_obs <- 200*200 + 200*400
+> 
+> 
+> 
+> # Set Range for Parameter Means
+> range_muC <- c(1,100)
+> range_muA <- c(0,0.5)
+> #range_muF <- c(0,1) # fix to 0.5
+> range_muE <-c(0,0.5)
+> range_muR <- c(0,25) # range 0 - 25 empirical derived
+> eta <- 5 # Simulated N = 10000 with eta = 5, 95 % of all values lie within 0 -+ 0.56
+> 
+> 
+> sigC <- c(0.125,0.5)
+> sigA <- c(0.125,0.5)
+> sigF <- c(0.0001,0.1)
+> sigE <- c(1,2)
+> sigR <- c(0.125,0.5) # abhänbgig von removal parameter -> analog zu c und a
+> sigB <- c(0.0001, 0.1)
+> 
+> # Test Cons (500 Rets, 16 NPLs, 3 IOPs, 4 FT Cons)
+> #i <- 3
+> #j <- 5
+> #k <- 4
+> #l <- 1
+> #n <- 2
+> 
+> 
+> # Preallocate Data Objects for iterative data ----
+> benchmarks_subject_pars<- matrix(NaN,nrow=n_obs, ncol = 75)
+> colnames(benchmarks_subject_pars) <- c("N","K","Retrievals","n_conFT","FT","meanPC","minPC","maxPC","hyper_mu_c","hyper_sig_c",
++                                        "hyper_mu_a","hyper_sig_a","relCA","hyper_mu_f","sig_f","hyper_mu_e","hyper_sig_e","hyper_mu_r","hyper_sig_r",
++                                        
++                                        "emp_cor_ca","est_cor_ca","lower_95_HDI_cor_ca","upper_95_HDI_cor_ca",
++                                        "emp_cor_cf","est_cor_cf","lower_95_HDI_cor_cf","upper_95_HDI_cor_cf",
++                                        "emp_cor_af", "est_cor_af","lower_95_HDI_cor_af","upper_95_HDI_cor_af",
++                                        "emp_cor_ce", "est_cor_ce","lower_95_HDI_cor_ce","upper_95_HDI_cor_ce",
++                                        "emp_cor_cr", "est_cor_cr","lower_95_HDI_cor_cr","upper_95_HDI_cor_cr",
++                                        
++                                        "emp_cor_ae", "est_cor_ae","lower_95_HDI_cor_ae","upper_95_HDI_cor_ae",
++                                        "emp_cor_ar", "est_cor_ar","lower_95_HDI_cor_ar","upper_95_HDI_cor_ar",
++                                        
++                                        "emp_cor_fe", "est_cor_fe","lower_95_HDI_cor_fe","upper_95_HDI_cor_fe",
++                                        "emp_cor_fr", "est_cor_fr","lower_95_HDI_cor_fr","upper_95_HDI_cor_fr",
++                                        
++                                        
++                                        "cor_subj_muA","cor_subj_modeA","cor_subj_muC","cor_subj_modeC",
++                                        "cor_subj_muF","cor_subj_modeF","cor_subj_muE","cor_subj_modeE","cor_subj_muR","cor_subj_modeR",
++                                        
++                                        
++                                        "mu_subj_resA","sig_subj_resA","mu_subj_resC","sig_subj_resC", 
++                                        "mu_subj_resF", "sig_subj_resF", "mu_subj_resE","sig_subj_resE","mu_subj_resR","sig_subj_resR")
+> 
+> benchmarks_hyper_pars <- matrix(NaN,nrow= n_obs/reps2Con, ncol=23)
+> colnames(benchmarks_hyper_pars) <- c("N","K","Retrievals","n_conFT","FT","meanPC","minPC","maxPC","hyper_cor_a", 
++                                      "hyper_cor_c","hyper_cor_f","hyper_cor_e","hyper_cor_r",
++                                      "mu_res_hyper_a","sigma_res_hyper_a","mu_res_hyper_c",
++                                      "sigma_res_hyper_c","mu_res_hyper_f","sigma_res_hyper_f",
++                                      "mu_res_hyper_e","sigma_res_hyper_e","mu_res_hyper_r","sigma_res_hyper_r")
+> 
+> 
+> hyper_pars <- matrix(NaN,  nrow = n_obs, ncol=26)
+> colnames(hyper_pars) <-c("Repetition","N","K","Retrievals","n_conFT","FT","meanPC","minPC","maxPC",
++                          "real_hyper_mu_a","est_hyper_mu_a","rhat_hyper_mu_a","real_hyper_mu_c",
++                          "est_hyper_mu_c","rhat_hyper_mu_c", "real_hyper_mu_f_normal", "est_hyper_mu_f_normal", 
++                          "real_hyper_log_mu_f","est_hyper_log_mu_f","rhat_hyper_mu_f",
++                          "real_hyper_mu_e","est_hyper_mu_e","rhat_hyper_mu_e",
++                          "real_hyper_mu_r","est_hyper_mu_r","rhat_hyper_mu_r")
+> 
+> tic()
+> # Simulation ----
+> 
+> 
+>           
+>           # Set Seed for pseudo randomized processes
+>           time <- Sys.time()
+>           seed <- as.integer(Sys.time()) %% 100000
+>           
+>           # set seed for random number generator
+>           set.seed(seed)
+>           
+>           # Set Up Data Object
+>           
+>           simulation.ee <- list()
+>           
+>           
+>           # Save Simulation Conditions----
+>           conN <- N
+>           conK <- K
+>           conRet <- nRetrievals
+>           con_nFT <- nFT
+>           conFT <- seq(from = minFT, to = maxFT, length.out = con_nFT) # eventuell log scale 0.2 0.8 2.4 oder so?
+>           
+>           
+>           # Sample Hyper-Parameter Means with C as fixpoint ----
+>           relCA <- runif(1, min = range_muA[1],max = range_muA[2])
+>           Mean_Cpar <- runif(1, min =range_muC[1], max= range_muC[2])
+>           Mean_Apar <- Mean_Cpar*(relCA)
+>           Mean_Epar <- runif(1, min =range_muE[1], max = range_muE[2])
+>           Mean_Rpar <- runif(1, min= range_muR[1], max = range_muR[2])
+>           Mean_bpar <- 0.1
+>           Mean_Fpar <- 0.50
+>           log_mu_f <- log(Mean_Fpar/(1-Mean_Fpar))
+>           
+>           hyper_mus <- c(Mean_Cpar,Mean_Apar,log_mu_f,Mean_Epar,Mean_Rpar, Mean_bpar)
+>           
+>           
+>           # Sample Variances and Set Covariances----
+>           
+>           sig_c <- runif(1, min = sigC[1], max = sigC[2])*Mean_Cpar
+>           sig_a <- runif(1, min = sigA[1], max = sigA[2])*Mean_Apar 
+>           sig_e <- runif(1, min = sigE[1], max= sigE[2])
+>           sig_r <- runif(1, min = sigR[1], max= sigR[2])*Mean_Rpar
+>           sig_b <- 0.001
+>           sig_f <- 0.001
+>           
+>           sigs <-c(sig_c,sig_a,sig_f,sig_e,sig_r,sig_b)
+>           Sig <- diag(length(hyper_mus))
+>           
+>           Sig[1,1] <- (sig_c)^2
+>           Sig[2,2] <- (sig_a)^2
+>           Sig[3,3] <- (sig_f)^2
+>           Sig[4,4] <- (sig_e)^2
+>           Sig[5,5] <- (sig_r)^2
+>           Sig[6,6] <- (sig_b)^2
+>           
+>           
+>           # Set Correlations for Parameters ----
+>           
+>           # Sample Covariance Matrix Sigma
+>           
+>           omega <- rlkjcorr(1,length(hyper_mus),eta)
+>           
+>           # Little Hack for fixing coveriance of b to zer0
+>           
+>           #omega[6,1:5] = omega[1:5,6] = 0 #fix cov of b to 0
+>           #omega[3,1:5] = omega[1:5,3] = 0 #fix cov of f to 0
+>           
+>           
+>           Sigma <- cor2cov(omega,sigs)
+>           
+>           
+>           # Sample Parameters from MVN ----
+>           
+>           parms <- tmvtnorm::rtmvnorm(n=SampleSize, mean= hyper_mus, sigma=Sigma,
++                                       lower=c(0,0,-Inf,0,0,0),upper = c(Inf,Inf,Inf,Inf,Inf,Inf))
+>           # Merge Parameters to one Matrix
+>           colnames(parms) <- c("conA","genA","f","e","r","baseA")
+>           parms[,6] <- 0.1
+>           parms[,3] <- 0
+> 
+>           emp_cor_ca <-round(cor(parms[,1],parms[,2]),3)
+>           #emp_cor_cf <-round(cor(parms[,1],parms[,3]),3)
+>           #emp_cor_af <-round(cor(parms[,2],parms[,3]),3)  
+>           emp_cor_ce <-round(cor(parms[,1],parms[,4]),3)
+>           emp_cor_cr <-round(cor(parms[,1],parms[,5]),3)
+>           emp_cor_ae <-round(cor(parms[,2],parms[,4]),3)  
+>           emp_cor_ar <-round(cor(parms[,2],parms[,5]),3)  
+>           #emp_cor_fe <-round(cor(parms[,3],parms[,4]),3)  
+>           #emp_cor_fr <-round(cor(parms[,3],parms[,5]),3)  
+>           
+>           
+>           parms[,3] <- 1 / (1+exp(-parms[,3]))
+>           
+>           
+>           
+>           # Simulate Data for Estimation ----
+>           
+>           ParmsFT <- matrix(rep(parms,each =con_nFT), nrow = length(parms[,1])*con_nFT, ncol = ncol(parms), byrow = F)
+>           colnames(ParmsFT) <- c("conA","genA","f","e","r","baseA")
+>           FT <- rep(conFT,length.out = nrow(ParmsFT))
+>           
+>           data <- simData_CSpanEE(ParmsFT,as.vector(respOpt_Cspan(conN,conK)), conRet,conFT)
+>           
+>           # Calculate Percentage Correct per Condition
+>           
+>           
+>           # Generate Stan Data ----
+>           
+>           
+>           stan.dat <- list(count = data[,4:8], 
++                            K = 5,
++                            R = as.vector(respOpt_Cspan(conN,conK)),
++                            J = length(sigs)-2,
++                            N = length(unique(data[,"ID"])),
++                            Con = length(unique(data[,"Freetime"])),
++                            Freetime = unique(data[,"Freetime"]),
++                            scale_b = 0.1,
++                            fixed_f = .5)
+>           
+>           # Fit-The-Shit----
+>               
+>           fit_M3 <- stan(file = "Model Scripts/M3_ComplexSpan_EE_LKJ_Cholesky_BF.stan",data=stan.dat,
++                          warmup = 2000, iter = 4000,
++                          chains = 4,refresh = 100, init=init_fun)
+
+SAMPLING FOR MODEL 'M3_ComplexSpan_EE_LKJ_Cholesky_BF' NOW (CHAIN 1).
+
+SAMPLING FOR MODEL 'M3_ComplexSpan_EE_LKJ_Cholesky_BF' NOW (CHAIN 2).
+
+SAMPLING FOR MODEL 'M3_ComplexSpan_EE_LKJ_Cholesky_BF' NOW (CHAIN 3).
+
+SAMPLING FOR MODEL 'M3_ComplexSpan_EE_LKJ_Cholesky_BF' NOW (CHAIN 4).
+Chain 2: 
+Chain 2: Gradient evaluation took 0.000896 seconds
+Chain 2: 1000 transitions using 10 leapfrog steps per transition would take 8.96 seconds.
+Chain 2: Adjust your expectations accordingly!
+Chain 2: 
+Chain 2: 
+Chain 2: Iteration:    1 / 4000 [  0%]  (Warmup)
+Chain 1: 
+Chain 1: Gradient evaluation took 0.000862 seconds
+Chain 1: 1000 transitions using 10 leapfrog steps per transition would take 8.62 seconds.
+Chain 1: Adjust your expectations accordingly!
+Chain 1: 
+Chain 1: 
+Chain 1: Iteration:    1 / 4000 [  0%]  (Warmup)
+Chain 3: 
+Chain 3: Gradient evaluation took 0.001136 seconds
+Chain 3: 1000 transitions using 10 leapfrog steps per transition would take 11.36 seconds.
+Chain 3: Adjust your expectations accordingly!
+Chain 3: 
+Chain 3: 
+Chain 3: Iteration:    1 / 4000 [  0%]  (Warmup)
+Chain 4: 
+Chain 4: Gradient evaluation took 0.000932 seconds
+Chain 4: 1000 transitions using 10 leapfrog steps per transition would take 9.32 seconds.
+Chain 4: Adjust your expectations accordingly!
+Chain 4: 
+Chain 4: 
+Chain 4: Iteration:    1 / 4000 [  0%]  (Warmup)
+Chain 3: Iteration:  100 / 4000 [  2%]  (Warmup)
+Chain 4: Iteration:  100 / 4000 [  2%]  (Warmup)
+Chain 1: Iteration:  100 / 4000 [  2%]  (Warmup)
+Chain 2: Iteration:  100 / 4000 [  2%]  (Warmup)
+Chain 2: Iteration:  200 / 4000 [  5%]  (Warmup)
+Chain 4: Iteration:  200 / 4000 [  5%]  (Warmup)
+Chain 3: Iteration:  200 / 4000 [  5%]  (Warmup)
+Chain 1: Iteration:  200 / 4000 [  5%]  (Warmup)
+Chain 2: Iteration:  300 / 4000 [  7%]  (Warmup)
+Chain 4: Iteration:  300 / 4000 [  7%]  (Warmup)
+Chain 4: Iteration:  400 / 4000 [ 10%]  (Warmup)
+Chain 3: Iteration:  300 / 4000 [  7%]  (Warmup)
+Chain 4: Iteration:  500 / 4000 [ 12%]  (Warmup)
+Chain 1: Iteration:  300 / 4000 [  7%]  (Warmup)
+Chain 4: Iteration:  600 / 4000 [ 15%]  (Warmup)
+Chain 2: Iteration:  400 / 4000 [ 10%]  (Warmup)
+Chain 4: Iteration:  700 / 4000 [ 17%]  (Warmup)
+Chain 3: Iteration:  400 / 4000 [ 10%]  (Warmup)
+Chain 4: Iteration:  800 / 4000 [ 20%]  (Warmup)
+Chain 1: Iteration:  400 / 4000 [ 10%]  (Warmup)
+Chain 2: Iteration:  500 / 4000 [ 12%]  (Warmup)
+Chain 4: Iteration:  900 / 4000 [ 22%]  (Warmup)
+Chain 1: Iteration:  500 / 4000 [ 12%]  (Warmup)
+Chain 2: Iteration:  600 / 4000 [ 15%]  (Warmup)
+Chain 2: Iteration:  700 / 4000 [ 17%]  (Warmup)
+Chain 4: Iteration: 1000 / 4000 [ 25%]  (Warmup)
+Chain 3: Iteration:  500 / 4000 [ 12%]  (Warmup)
+Chain 1: Iteration:  600 / 4000 [ 15%]  (Warmup)
+Chain 2: Iteration:  800 / 4000 [ 20%]  (Warmup)
+Chain 1: Iteration:  700 / 4000 [ 17%]  (Warmup)
+Chain 4: Iteration: 1100 / 4000 [ 27%]  (Warmup)
+Chain 3: Iteration:  600 / 4000 [ 15%]  (Warmup)
+Chain 2: Iteration:  900 / 4000 [ 22%]  (Warmup)
+Chain 1: Iteration:  800 / 4000 [ 20%]  (Warmup)
+Chain 4: Iteration: 1200 / 4000 [ 30%]  (Warmup)
+Chain 2: Iteration: 1000 / 4000 [ 25%]  (Warmup)
+Chain 3: Iteration:  700 / 4000 [ 17%]  (Warmup)
+Chain 1: Iteration:  900 / 4000 [ 22%]  (Warmup)
+Chain 2: Iteration: 1100 / 4000 [ 27%]  (Warmup)
+Chain 4: Iteration: 1300 / 4000 [ 32%]  (Warmup)
+Chain 3: Iteration:  800 / 4000 [ 20%]  (Warmup)
+Chain 2: Iteration: 1200 / 4000 [ 30%]  (Warmup)
+Chain 1: Iteration: 1000 / 4000 [ 25%]  (Warmup)
+Chain 4: Iteration: 1400 / 4000 [ 35%]  (Warmup)
+Chain 3: Iteration:  900 / 4000 [ 22%]  (Warmup)
+Chain 2: Iteration: 1300 / 4000 [ 32%]  (Warmup)
+Chain 1: Iteration: 1100 / 4000 [ 27%]  (Warmup)
+Chain 2: Iteration: 1400 / 4000 [ 35%]  (Warmup)
+Chain 3: Iteration: 1000 / 4000 [ 25%]  (Warmup)
+Chain 4: Iteration: 1500 / 4000 [ 37%]  (Warmup)
+Chain 1: Iteration: 1200 / 4000 [ 30%]  (Warmup)
+Chain 3: Iteration: 1100 / 4000 [ 27%]  (Warmup)
+Chain 2: Iteration: 1500 / 4000 [ 37%]  (Warmup)
+Chain 4: Iteration: 1600 / 4000 [ 40%]  (Warmup)
+Chain 1: Iteration: 1300 / 4000 [ 32%]  (Warmup)
+Chain 3: Iteration: 1200 / 4000 [ 30%]  (Warmup)
+Chain 2: Iteration: 1600 / 4000 [ 40%]  (Warmup)
+Chain 1: Iteration: 1400 / 4000 [ 35%]  (Warmup)
+Chain 4: Iteration: 1700 / 4000 [ 42%]  (Warmup)
+Chain 3: Iteration: 1300 / 4000 [ 32%]  (Warmup)
+Chain 2: Iteration: 1700 / 4000 [ 42%]  (Warmup)
+Chain 1: Iteration: 1500 / 4000 [ 37%]  (Warmup)
+Chain 3: Iteration: 1400 / 4000 [ 35%]  (Warmup)
+Chain 4: Iteration: 1800 / 4000 [ 45%]  (Warmup)
+Chain 2: Iteration: 1800 / 4000 [ 45%]  (Warmup)
+Chain 1: Iteration: 1600 / 4000 [ 40%]  (Warmup)
+Chain 3: Iteration: 1500 / 4000 [ 37%]  (Warmup)
+Chain 4: Iteration: 1900 / 4000 [ 47%]  (Warmup)
+Chain 2: Iteration: 1900 / 4000 [ 47%]  (Warmup)
+Chain 1: Iteration: 1700 / 4000 [ 42%]  (Warmup)
+Chain 3: Iteration: 1600 / 4000 [ 40%]  (Warmup)
+Chain 3: Iteration: 1700 / 4000 [ 42%]  (Warmup)
+Chain 1: Iteration: 1800 / 4000 [ 45%]  (Warmup)
+Chain 2: Iteration: 2000 / 4000 [ 50%]  (Warmup)
+Chain 2: Iteration: 2001 / 4000 [ 50%]  (Sampling)
+Chain 4: Iteration: 2000 / 4000 [ 50%]  (Warmup)
+Chain 4: Iteration: 2001 / 4000 [ 50%]  (Sampling)
+Chain 3: Iteration: 1800 / 4000 [ 45%]  (Warmup)
+Chain 1: Iteration: 1900 / 4000 [ 47%]  (Warmup)
+Chain 3: Iteration: 1900 / 4000 [ 47%]  (Warmup)
+Chain 2: Iteration: 2100 / 4000 [ 52%]  (Sampling)
+Chain 1: Iteration: 2000 / 4000 [ 50%]  (Warmup)
+Chain 1: Iteration: 2001 / 4000 [ 50%]  (Sampling)
+Chain 4: Iteration: 2100 / 4000 [ 52%]  (Sampling)
+Chain 2: Iteration: 2200 / 4000 [ 55%]  (Sampling)
+Chain 3: Iteration: 2000 / 4000 [ 50%]  (Warmup)
+Chain 3: Iteration: 2001 / 4000 [ 50%]  (Sampling)
+Chain 2: Iteration: 2300 / 4000 [ 57%]  (Sampling)
+Chain 1: Iteration: 2100 / 4000 [ 52%]  (Sampling)
+Chain 4: Iteration: 2200 / 4000 [ 55%]  (Sampling)
+Chain 2: Iteration: 2400 / 4000 [ 60%]  (Sampling)
+Chain 1: Iteration: 2200 / 4000 [ 55%]  (Sampling)
+Chain 2: Iteration: 2500 / 4000 [ 62%]  (Sampling)
+Chain 4: Iteration: 2300 / 4000 [ 57%]  (Sampling)
+Chain 1: Iteration: 2300 / 4000 [ 57%]  (Sampling)
+Chain 2: Iteration: 2600 / 4000 [ 65%]  (Sampling)
+Chain 3: Iteration: 2100 / 4000 [ 52%]  (Sampling)
+Chain 2: Iteration: 2700 / 4000 [ 67%]  (Sampling)
+Chain 1: Iteration: 2400 / 4000 [ 60%]  (Sampling)
+Chain 4: Iteration: 2400 / 4000 [ 60%]  (Sampling)
+Chain 2: Iteration: 2800 / 4000 [ 70%]  (Sampling)
+Chain 1: Iteration: 2500 / 4000 [ 62%]  (Sampling)
+Chain 2: Iteration: 2900 / 4000 [ 72%]  (Sampling)
+Chain 4: Iteration: 2500 / 4000 [ 62%]  (Sampling)
+Chain 3: Iteration: 2200 / 4000 [ 55%]  (Sampling)
+Chain 2: Iteration: 3000 / 4000 [ 75%]  (Sampling)
+Chain 1: Iteration: 2600 / 4000 [ 65%]  (Sampling)
+Chain 2: Iteration: 3100 / 4000 [ 77%]  (Sampling)
+Chain 4: Iteration: 2600 / 4000 [ 65%]  (Sampling)
+Chain 2: Iteration: 3200 / 4000 [ 80%]  (Sampling)
+Chain 1: Iteration: 2700 / 4000 [ 67%]  (Sampling)
+Chain 2: Iteration: 3300 / 4000 [ 82%]  (Sampling)
+Chain 4: Iteration: 2700 / 4000 [ 67%]  (Sampling)
+Chain 1: Iteration: 2800 / 4000 [ 70%]  (Sampling)
+Chain 3: Iteration: 2300 / 4000 [ 57%]  (Sampling)
+Chain 2: Iteration: 3400 / 4000 [ 85%]  (Sampling)
+Chain 1: Iteration: 2900 / 4000 [ 72%]  (Sampling)
+Chain 2: Iteration: 3500 / 4000 [ 87%]  (Sampling)
+Chain 4: Iteration: 2800 / 4000 [ 70%]  (Sampling)
+Chain 2: Iteration: 3600 / 4000 [ 90%]  (Sampling)
+Chain 1: Iteration: 3000 / 4000 [ 75%]  (Sampling)
+Chain 4: Iteration: 2900 / 4000 [ 72%]  (Sampling)
+Chain 2: Iteration: 3700 / 4000 [ 92%]  (Sampling)
+Chain 3: Iteration: 2400 / 4000 [ 60%]  (Sampling)
+Chain 1: Iteration: 3100 / 4000 [ 77%]  (Sampling)
+Chain 2: Iteration: 3800 / 4000 [ 95%]  (Sampling)
+Chain 4: Iteration: 3000 / 4000 [ 75%]  (Sampling)
+Chain 2: Iteration: 3900 / 4000 [ 97%]  (Sampling)
+Chain 1: Iteration: 3200 / 4000 [ 80%]  (Sampling)
+Chain 2: Iteration: 4000 / 4000 [100%]  (Sampling)
+Chain 2: 
+Chain 2:  Elapsed Time: 264.771 seconds (Warm-up)
+Chain 2:                241.334 seconds (Sampling)
+Chain 2:                506.105 seconds (Total)
+Chain 2: 
+Chain 4: Iteration: 3100 / 4000 [ 77%]  (Sampling)
+Chain 3: Iteration: 2500 / 4000 [ 62%]  (Sampling)
+Chain 1: Iteration: 3300 / 4000 [ 82%]  (Sampling)
+Chain 1: Iteration: 3400 / 4000 [ 85%]  (Sampling)
+Chain 4: Iteration: 3200 / 4000 [ 80%]  (Sampling)
+Chain 1: Iteration: 3500 / 4000 [ 87%]  (Sampling)
+Chain 4: Iteration: 3300 / 4000 [ 82%]  (Sampling)
+Chain 3: Iteration: 2600 / 4000 [ 65%]  (Sampling)
+Chain 1: Iteration: 3600 / 4000 [ 90%]  (Sampling)
+Chain 4: Iteration: 3400 / 4000 [ 85%]  (Sampling)
+Chain 1: Iteration: 3700 / 4000 [ 92%]  (Sampling)
+Chain 1: Iteration: 3800 / 4000 [ 95%]  (Sampling)
+Chain 4: Iteration: 3500 / 4000 [ 87%]  (Sampling)
+Chain 3: Iteration: 2700 / 4000 [ 67%]  (Sampling)
+Chain 1: Iteration: 3900 / 4000 [ 97%]  (Sampling)
+Chain 4: Iteration: 3600 / 4000 [ 90%]  (Sampling)
+Chain 1: Iteration: 4000 / 4000 [100%]  (Sampling)
+Chain 1: 
+Chain 1:  Elapsed Time: 287.492 seconds (Warm-up)
+Chain 1:                342.648 seconds (Sampling)
+Chain 1:                630.14 seconds (Total)
+Chain 1: 
+Chain 4: Iteration: 3700 / 4000 [ 92%]  (Sampling)
+Chain 3: Iteration: 2800 / 4000 [ 70%]  (Sampling)
+Chain 4: Iteration: 3800 / 4000 [ 95%]  (Sampling)
+Chain 4: Iteration: 3900 / 4000 [ 97%]  (Sampling)
+Chain 3: Iteration: 2900 / 4000 [ 72%]  (Sampling)
+Chain 4: Iteration: 4000 / 4000 [100%]  (Sampling)
+Chain 4: 
+Chain 4:  Elapsed Time: 265.652 seconds (Warm-up)
+Chain 4:                454.648 seconds (Sampling)
+Chain 4:                720.3 seconds (Total)
+Chain 4: 
+Chain 3: Iteration: 3000 / 4000 [ 75%]  (Sampling)
+Chain 3: Iteration: 3100 / 4000 [ 77%]  (Sampling)
+Chain 3: Iteration: 3200 / 4000 [ 80%]  (Sampling)
+Chain 3: Iteration: 3300 / 4000 [ 82%]  (Sampling)
+Chain 3: Iteration: 3400 / 4000 [ 85%]  (Sampling)
+Chain 3: Iteration: 3500 / 4000 [ 87%]  (Sampling)
+Chain 3: Iteration: 3600 / 4000 [ 90%]  (Sampling)
+Chain 3: Iteration: 3700 / 4000 [ 92%]  (Sampling)
+Chain 3: Iteration: 3800 / 4000 [ 95%]  (Sampling)
+Chain 3: Iteration: 3900 / 4000 [ 97%]  (Sampling)
+Chain 3: Iteration: 4000 / 4000 [100%]  (Sampling)
+Chain 3: 
+Chain 3:  Elapsed Time: 294.257 seconds (Warm-up)
+Chain 3:                904.142 seconds (Sampling)
+Chain 3:                1198.4 seconds (Total)
+Chain 3: 
+Warning messages:
+1: There were 139 divergent transitions after warmup. See
+http://mc-stan.org/misc/warnings.html#divergent-transitions-after-warmup
+to find out why this is a problem and how to eliminate them. 
+2: There were 2056 transitions after warmup that exceeded the maximum treedepth. Increase max_treedepth above 10. See
+http://mc-stan.org/misc/warnings.html#maximum-treedepth-exceeded 
+3: Examine the pairs() plot to diagnose sampling problems
+ 
+4: The largest R-hat is NA, indicating chains have not mixed.
+Running the chains for more iterations may help. See
+http://mc-stan.org/misc/warnings.html#r-hat 
+5: Bulk Effective Samples Size (ESS) is too low, indicating posterior means and medians may be unreliable.
+Running the chains for more iterations may help. See
+http://mc-stan.org/misc/warnings.html#bulk-ess 
+6: Tail Effective Samples Size (ESS) is too low, indicating posterior variances and tail quantiles may be unreliable.
+Running the chains for more iterations may help. See
+http://mc-stan.org/misc/warnings.html#tail-ess 
+> 
+>           # Extract Posterior Parameters from fit object---- 
+>           
+>           post_samples <- rstan::extract(fit_M3, pars=c("subj_pars","Omega"), inc_warmup = F)
+>           
+>           # Hyper Parameter
+>           hyper_means <- as.vector(get_posterior_mean(fit_M3, par="hyper_pars")[,5])
+>           
+>           mean_est_hyper_c <- hyper_means[1]
+>           mean_est_hyper_a <- hyper_means[2]
+>           # mean_est_hyper_f_log <- hyper_means[3]
+>           # mean_est_hyper_f_normal <- (1 / (1+exp(-hyper_means[3])))
+>           mean_est_hyper_e <- hyper_means[3]
+>           mean_est_hyper_r <- hyper_means[4]
+>           
+>           # Subject Parameters
+>           
+>           means_c <- colMeans(post_samples$subj_pars[,,1])
+>           means_a <- colMeans(post_samples$subj_pars[,,2])
+>           #means_f <- colMeans(post_samples$f)
+>           means_e <- colMeans(post_samples$subj_pars[,,3])
+>           means_r <- colMeans(post_samples$subj_pars[,,4])
+>           
+>           # cor(means_c, parms[,1])
+>           # cor(means_a, parms[,2])      
+>           # cor(means_e, parms[,4])      
+>           # cor(means_r, parms[,5])      
+>          
+>           
+>           
+>           # Correlations
+>           
+>           est_cor_ca <- rstan::get_posterior_mean(fit_M3, par=c("Omega[1,2]"))[5]
+>           #est_cor_cf <- rstan::get_posterior_mean(fit_M3, par=c("Omega[1,3]"))[5]
+>          # est_cor_af  <- rstan::get_posterior_mean(fit_M3, par=c("Omega[2,3]"))[5]
+>           est_cor_ce  <- rstan::get_posterior_mean(fit_M3, par=c("Omega[1,4]"))[5]
+>           est_cor_cr  <- rstan::get_posterior_mean(fit_M3, par=c("Omega[1,5]"))[5]
+Error in check_pars(c(object@model_pars, fnames), pars) : 
+  no parameter Omega[1,5]
+Calls: <Anonymous> -> <Anonymous> -> .local -> check_pars
+Execution halted
+srun: error: z0081: task 0: Exited with exit code 1
+srun: Terminating job step 9900704.0
