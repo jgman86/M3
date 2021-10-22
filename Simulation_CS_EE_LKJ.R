@@ -263,11 +263,11 @@ tic()
                            fixed_f = .5)
           
           # Fit-The-Shit----
-              
-          fit_M3 <- stan(file = "Model Scripts/M3_ComplexSpan_EE_LKJ_Cholesky_BF.stan",data=stan.dat,
+    tic()          
+          fit_M3 <- stan(file = "M3_ComplexSpan_EE_LKJ_Cholesky_BF.stan",data=stan.dat,
                          warmup = 2000, iter = 4000,
-                         chains = 4,refresh = 100, init=init_fun)
-
+                         chains = 4,refresh = 100, init=init_fun,)
+toc()
           # Extract Posterior Parameters from fit object---- 
           
           post_samples <- rstan::extract(fit_M3, pars=c("subj_pars","Omega"), inc_warmup = F)
@@ -290,11 +290,11 @@ tic()
           means_e <- colMeans(post_samples$subj_pars[,,3])
           means_r <- colMeans(post_samples$subj_pars[,,4])
           
-          # cor(means_c, parms[,1])
-          # cor(means_a, parms[,2])      
-          # cor(means_e, parms[,4])      
-          # cor(means_r, parms[,5])      
-         
+          cor(means_c, parms[,1])
+          cor(means_a, parms[,2])
+          cor(means_e, parms[,4])
+          cor(means_r, parms[,5])
+
           
           
           # Correlations
@@ -302,13 +302,14 @@ tic()
           est_cor_ca <- rstan::get_posterior_mean(fit_M3, par=c("Omega[1,2]"))[5]
           #est_cor_cf <- rstan::get_posterior_mean(fit_M3, par=c("Omega[1,3]"))[5]
          # est_cor_af  <- rstan::get_posterior_mean(fit_M3, par=c("Omega[2,3]"))[5]
-          est_cor_ce  <- rstan::get_posterior_mean(fit_M3, par=c("Omega[1,4]"))[5]
-          est_cor_cr  <- rstan::get_posterior_mean(fit_M3, par=c("Omega[1,5]"))[5]
-          est_cor_ae  <- rstan::get_posterior_mean(fit_M3, par=c("Omega[2,4]"))[5]
-          est_cor_ar  <- rstan::get_posterior_mean(fit_M3, par=c("Omega[2,5]"))[5]
+          est_cor_ce  <- rstan::get_posterior_mean(fit_M3, par=c("Omega[1,3]"))[5]
+          est_cor_cr  <- rstan::get_posterior_mean(fit_M3, par=c("Omega[1,4]"))[5]
+          est_cor_ae  <- rstan::get_posterior_mean(fit_M3, par=c("Omega[2,3]"))[5]
+          est_cor_ar  <- rstan::get_posterior_mean(fit_M3, par=c("Omega[2,4]"))[5]
          # est_cor_fe  <- rstan::get_posterior_mean(fit_M3, par=c("Omega[3,4]"))[5]
           #est_cor_fr  <- rstan::get_posterior_mean(fit_M3, par=c("Omega[3,5]"))[5]
           
+        
           
           
           # Calculate Highest Density Interval----
@@ -316,16 +317,16 @@ tic()
           HDI_c <- t(round(hdi(post_samples$subj_pars[,,1], credMass = .95),3))
           HDI_a <- t(round(hdi(post_samples$subj_pars[,,2], credMass = .95),3))
          # HDI_f <- t(round(hdi(post_samples$f, credMass = .95),3))
-          HDI_e <- t(round(hdi(post_samples$subj_pars[,,4], credMass = .95),3))
-          HDI_r <- t(round(hdi(post_samples$subj_pars[,,5], credMass = .95),3))
+          HDI_e <- t(round(hdi(post_samples$subj_pars[,,3], credMass = .95),3))
+          HDI_r <- t(round(hdi(post_samples$subj_pars[,,4], credMass = .95),3))
           
           HDI_cor_ca <- round(as.vector(unlist(hdi(extract(fit_M3, pars=c("Omega[1,2]"),inc_warmup=F),credMass= 0.95))),2)
          # HDI_cor_cf <- round(as.vector(unlist(hdi(extract(fit_M3, pars=c("Omega[1,3]"),inc_warmup=F),credMass= 0.95))),2)
          # HDI_cor_af <- round(as.vector(unlist(hdi(extract(fit_M3, pars=c("Omega[2,3]"),inc_warmup=F),credMass= 0.95))),2)
-          HDI_cor_ce <- round(as.vector(unlist(hdi(extract(fit_M3, pars=c("Omega[1,4]"),inc_warmup=F),credMass= 0.95))),2)
-          HDI_cor_cr <- round(as.vector(unlist(hdi(extract(fit_M3, pars=c("Omega[1,5]"),inc_warmup=F),credMass= 0.95))),2)
-          HDI_cor_ae <- round(as.vector(unlist(hdi(extract(fit_M3, pars=c("Omega[2,4]"),inc_warmup=F),credMass= 0.95))),2)
-          HDI_cor_ar <- round(as.vector(unlist(hdi(extract(fit_M3, pars=c("Omega[2,5]"),inc_warmup=F),credMass= 0.95))),2)
+          HDI_cor_ce <- round(as.vector(unlist(hdi(extract(fit_M3, pars=c("Omega[1,3]"),inc_warmup=F),credMass= 0.95))),2)
+          HDI_cor_cr <- round(as.vector(unlist(hdi(extract(fit_M3, pars=c("Omega[1,4]"),inc_warmup=F),credMass= 0.95))),2)
+          HDI_cor_ae <- round(as.vector(unlist(hdi(extract(fit_M3, pars=c("Omega[2,3]"),inc_warmup=F),credMass= 0.95))),2)
+          HDI_cor_ar <- round(as.vector(unlist(hdi(extract(fit_M3, pars=c("Omega[2,4]"),inc_warmup=F),credMass= 0.95))),2)
           #HDI_cor_fe <- round(as.vector(unlist(hdi(extract(fit_M3, pars=c("Omega[3,4]"),inc_warmup=F),credMass= 0.95))),2)
           #HDI_cor_fr <- round(as.vector(unlist(hdi(extract(fit_M3, pars=c("Omega[3,5]"),inc_warmup=F),credMass= 0.95))),2)
           
@@ -382,20 +383,20 @@ tic()
           mode_c <- posterior.mode(post_samples$subj_pars[,,1])
           mode_a <- posterior.mode(post_samples$subj_pars[,,2])
          # mode_f <- posterior.mode(post_samples$f)
-          mode_e <- posterior.mode(post_samples$subj_pars[,,4])
-          mode_r <- posterior.mode(post_samples$subj_pars[,,5])
+          mode_e <- posterior.mode(post_samples$subj_pars[,,3])
+          mode_r <- posterior.mode(post_samples$subj_pars[,,4])
           
           # Extract rhat ----
           
           rhats_subj_pars <-as.data.frame(t(rhat(fit_M3, pars=c("subj_pars"))))
-          rhats_f <-as.data.frame(t(rhat(fit_M3, pars=c("f"))))
+          #rhats_f <-as.data.frame(t(rhat(fit_M3, pars=c("f"))))
           
           rhats_subj_pars <- rhats_subj_pars %>% gather(value = rhat) %>%
             separate(key, sep=",", into = c("Subj","par")) %>% 
-            mutate(par = as.factor(par), par = recode(par,"1]" = "c","2]"="a", "4]" = "e", "5]" = "r" )) %>%
+            mutate(par = as.factor(par), par = recode(par,"1]" = "c","2]"="a", "3]" = "e", "4]" = "r" )) %>%
             pivot_wider(names_from = par, values_from=rhat)
           
-          rhats_f<- rhats_f %>% gather(value = rhat)
+          #rhats_f<- rhats_f %>% gather(value = rhat)
           
           rhats_a<- rhats_subj_pars$a
           rhat_max_a <- max(rhats_a)
@@ -415,20 +416,20 @@ tic()
           
           
           rhat_cor_ca <- as.vector(rhat(fit_M3, pars=c("Omega[1,2]")))
-          rhat_cor_cf <- as.vector(rhat(fit_M3, pars=c("Omega[1,3]")))
-          rhat_cor_af <- as.vector(rhat(fit_M3, pars=c("Omega[2,3]")))
-          rhat_cor_ce <- as.vector(rhat(fit_M3, pars=c("Omega[1,4]")))
-          rhat_cor_cr <- as.vector(rhat(fit_M3, pars=c("Omega[1,5]")))
+          # rhat_cor_cf <- as.vector(rhat(fit_M3, pars=c("Omega[1,3]")))
+          # rhat_cor_af <- as.vector(rhat(fit_M3, pars=c("Omega[2,3]")))
+          rhat_cor_ce <- as.vector(rhat(fit_M3, pars=c("Omega[1,3]")))
+          rhat_cor_cr <- as.vector(rhat(fit_M3, pars=c("Omega[1,4]")))
           rhat_cor_ae <- as.vector(rhat(fit_M3, pars=c("Omega[2,4]")))
-          rhat_cor_ar <- as.vector(rhat(fit_M3, pars=c("Omega[2,5]")))
-          rhat_cor_fe <- as.vector(rhat(fit_M3, pars=c("Omega[3,4]")))
-          rhat_cor_fr <- as.vector(rhat(fit_M3, pars=c("Omega[3,5]")))
+          rhat_cor_ar <- as.vector(rhat(fit_M3, pars=c("Omega[2,4]")))
+          # rhat_cor_fe <- as.vector(rhat(fit_M3, pars=c("Omega[3,4]")))
+          # rhat_cor_fr <- as.vector(rhat(fit_M3, pars=c("Omega[3,5]")))
           
           rhat_hyper_c <- as.vector(rhat(fit_M3, pars=c("hyper_pars")))[1]
           rhat_hyper_a <- as.vector(rhat(fit_M3, pars=c("hyper_pars")))[2]
-          rhat_hyper_f <- as.vector(rhat(fit_M3, pars=c("hyper_pars")))[3]
-          rhat_hyper_e <- as.vector(rhat(fit_M3, pars=c("hyper_pars")))[4]
-          rhat_hyper_r <- as.vector(rhat(fit_M3, pars=c("hyper_pars")))[5]
+          #rhat_hyper_f <- as.vector(rhat(fit_M3, pars=c("hyper_pars")))[3]
+          rhat_hyper_e <- as.vector(rhat(fit_M3, pars=c("hyper_pars")))[3]
+          rhat_hyper_r <- as.vector(rhat(fit_M3, pars=c("hyper_pars")))[4]
           
           
           
@@ -441,9 +442,9 @@ tic()
           
           resC <- means_c - parms[,1]
           resA <- means_a - parms[,2]
-          resF <- means_f - parms[,3]
-          resE <- means_e - parms[,4]
-          resR <- means_r - parms[,5]
+          #resF <- means_f - parms[,3]
+          resE <- means_e - parms[,3]
+          resR <- means_r - parms[,4]
           
      
           
@@ -455,7 +456,7 @@ tic()
                                    "nFT" = con_nFT,
                                    "FT" = FT,
                                    "Retrievals" = conRet,
-                                   "Repetition" = n,
+                                   #"Repetition" = n,
                                    "PC" = (data[,3]),
                                    "RelCa" = relCA,
                                    "mcmc_cor" = mcmc_cor,
@@ -466,18 +467,18 @@ tic()
                                    "upper_95_HDI_cor_ca" = HDI_cor_ca[2], 
                                    "rhat_cor_ca" = rhat_cor_ca,
                                    
-                                   "real_cor_cf"=emp_cor_cf,
-                                   "est_cor_cf" = est_cor_cf,
-                                   "lower_95_HDI_cor_cf" = HDI_cor_cf[1], 
-                                   "upper_95_HDI_cor_cf" = HDI_cor_cf[2], 
-                                   "rhat_cor_cf" = rhat_cor_cf,
+                                   # "real_cor_cf"=emp_cor_cf,
+                                   # "est_cor_cf" = est_cor_cf,
+                                   # "lower_95_HDI_cor_cf" = HDI_cor_cf[1], 
+                                   # "upper_95_HDI_cor_cf" = HDI_cor_cf[2], 
+                                   # "rhat_cor_cf" = rhat_cor_cf,
                                    
-                                   "real_cor_af"=emp_cor_af,
-                                   "est_cor_af" = est_cor_af,
-                                   "lower_95_HDI_cor_af" = HDI_cor_af[1], 
-                                   "upper_95_HDI_cor_af" = HDI_cor_af[2], 
-                                   "rhat_cor_af" = rhat_cor_af,
-                                   
+                                   # "real_cor_af"=emp_cor_af,
+                                   # "est_cor_af" = est_cor_af,
+                                   # "lower_95_HDI_cor_af" = HDI_cor_af[1], 
+                                   # "upper_95_HDI_cor_af" = HDI_cor_af[2], 
+                                   # "rhat_cor_af" = rhat_cor_af,
+                                   # 
                                    "real_cor_ce"=emp_cor_ce,
                                    "est_cor_ce" = est_cor_ce,
                                    "lower_95_HDI_cor_ce" = HDI_cor_ce[1], 
@@ -502,17 +503,17 @@ tic()
                                    "upper_95_HDI_cor_ar" = HDI_cor_ar[2], 
                                    "rhat_cor_ar" = rhat_cor_ar,
                                    
-                                   "real_cor_fe"=emp_cor_fe,
-                                   "est_cor_fe" = est_cor_fe,
-                                   "lower_95_HDI_cor_fe" = HDI_cor_fe[1], 
-                                   "upper_95_HDI_cor_fe" = HDI_cor_fe[2], 
-                                   "rhat_cor_fe" = rhat_cor_fe,
-                                   
-                                   "real_cor_fr"=emp_cor_fr,
-                                   "est_cor_fr" = est_cor_fr,
-                                   "lower_95_HDI_cor_fr" = HDI_cor_fr[1], 
-                                   "upper_95_HDI_cor_fr" = HDI_cor_fr[2], 
-                                   "rhat_cor_fr" = rhat_cor_fr,
+                                   # "real_cor_fe"=emp_cor_fe,
+                                   # "est_cor_fe" = est_cor_fe,
+                                   # "lower_95_HDI_cor_fe" = HDI_cor_fe[1], 
+                                   # "upper_95_HDI_cor_fe" = HDI_cor_fe[2], 
+                                   # "rhat_cor_fe" = rhat_cor_fe,
+                                   # 
+                                   # "real_cor_fr"=emp_cor_fr,
+                                   # "est_cor_fr" = est_cor_fr,
+                                   # "lower_95_HDI_cor_fr" = HDI_cor_fr[1], 
+                                   # "upper_95_HDI_cor_fr" = HDI_cor_fr[2], 
+                                   # "rhat_cor_fr" = rhat_cor_fr,
                                    
                                    "hyper_mu_c"= Mean_Cpar,
                                    "hyper_sig_c" = sig_c,
@@ -524,10 +525,10 @@ tic()
                                    "hyper_est_a" = mean_est_hyper_a,
                                    "rhat_hyper_mu_a" = rhat_hyper_a,
                                    
-                                   "hyper_mu_f" = Mean_Fpar,
-                                   "hyper_sig_f" = sig_f,
-                                   "hyper_est_f_normal" = mean_est_hyper_f_normal,
-                                   "rhat_hyper_mu_f" = rhat_hyper_f,
+                                   # "hyper_mu_f" = Mean_Fpar,
+                                   # "hyper_sig_f" = sig_f,
+                                   # "hyper_est_f_normal" = mean_est_hyper_f_normal,
+                                   # "rhat_hyper_mu_f" = rhat_hyper_f,
                                    
                                    "hyper_mu_e"= Mean_Epar,
                                    "hyper_sig_e" = sig_e,
@@ -555,13 +556,13 @@ tic()
                                    "resA"  = resA,
                                    "max_rhat_a" = rhat_max_a,
                                    
-                                   "mu_est_f" = means_f,
-                                   "mode_est_f" = mode_f,
-                                   "lower_95_HDI_f" = HDI_f[,1],
-                                   "upper_95_HDI_f" = HDI_f[,2],
-                                   "HDI_include_est_f" = HDI_include_f, 
-                                   "resF" = resF,
-                                   "max_rhat_f" = rhat_max_f,
+                                   # "mu_est_f" = means_f,
+                                   # "mode_est_f" = mode_f,
+                                   # "lower_95_HDI_f" = HDI_f[,1],
+                                   # "upper_95_HDI_f" = HDI_f[,2],
+                                   # "HDI_include_est_f" = HDI_include_f,
+                                   # "resF" = resF,
+                                   # "max_rhat_f" = rhat_max_f,
                                    
                                    "mu_est_e" = means_e,
                                    "mode_est_e" = mode_e,
@@ -583,7 +584,7 @@ tic()
                                    
                                    "mu_real_c" = parms[,1],
                                    "mu_real_a" = parms[,2],
-                                   "mu_real_f" = parms[,3],
+                                   #"mu_real_f" = parms[,3],
                                    "mu_real_e" = parms[,4],
                                    "mu_real_r" = parms[,5])
           
@@ -605,10 +606,10 @@ tic()
                                                               Mean_Fpar,sig_f, Mean_Epar, sig_e, Mean_Rpar, sig_r,
                                                               emp_cor_ca,est_cor_ca,
                                                               HDI_cor_ca[1],HDI_cor_ca[2],
-                                                              emp_cor_cf, est_cor_cf,
-                                                              HDI_cor_cf[1],HDI_cor_cf[2],
-                                                              emp_cor_af, est_cor_af, 
-                                                              HDI_cor_af[1],HDI_cor_af[2],
+                                                              #emp_cor_cf, est_cor_cf,
+                                                              #HDI_cor_cf[1],HDI_cor_cf[2],
+                                                             # emp_cor_af, est_cor_af, 
+                                                              #HDI_cor_af[1],HDI_cor_af[2],
                                                               emp_cor_ce, est_cor_ce,
                                                               HDI_cor_ce[1],HDI_cor_ce[2],
                                                               emp_cor_cr, est_cor_cr,
@@ -617,16 +618,16 @@ tic()
                                                               HDI_cor_ae[1],HDI_cor_ae[2],
                                                               emp_cor_ar, est_cor_ar,
                                                               HDI_cor_ar[1],HDI_cor_ar[2],
-                                                              emp_cor_fe, est_cor_fe,
-                                                              HDI_cor_fe[1],HDI_cor_fe[2],
-                                                              emp_cor_fr, est_cor_fr,
-                                                              HDI_cor_fr[1],HDI_cor_fr[2],
+                                                             # emp_cor_fe, est_cor_fe,
+                                                              #HDI_cor_fe[1],HDI_cor_fe[2],
+                                                              #emp_cor_fr, est_cor_fr,
+                                                              #HDI_cor_fr[1],HDI_cor_fr[2],
                                                               cor(simulation$mu_est_a,simulation$mu_real_a),
                                                               cor(simulation$mode_est_a, simulation$mu_real_a),
                                                               cor(simulation$mu_est_c,simulation$mu_real_c),
                                                               cor(simulation$mode_est_c, simulation$mu_real_c),
-                                                              cor(simulation$mu_est_f,simulation$mu_real_f),
-                                                              cor(simulation$mode_est_f, simulation$mu_real_f),
+                                                              #cor(simulation$mu_est_f,simulation$mu_real_f),
+                                                              #cor(simulation$mode_est_f, simulation$mu_real_f),
                                                               
                                                               cor(simulation$mu_est_e,simulation$mu_real_e),
                                                               cor(simulation$mode_est_e, simulation$mu_real_e),
@@ -637,8 +638,8 @@ tic()
                                                               sd(simulation$mu_est_a-simulation$mu_real_a),  
                                                               mean(simulation$mu_est_c-simulation$mu_real_c),
                                                               sd(simulation$mu_est_c-simulation$mu_real_c),
-                                                              mean(simulation$mu_est_f-simulation$mu_real_f),
-                                                              sd(simulation$mu_est_f-simulation$mu_real_f),
+                                                              #mean(simulation$mu_est_f-simulation$mu_real_f),
+                                                              #sd(simulation$mu_est_f-simulation$mu_real_f),
                                                               
                                                               mean(simulation$mu_est_e-simulation$mu_real_e),
                                                               sd(simulation$mu_est_e-simulation$mu_real_e),
@@ -656,10 +657,10 @@ tic()
                                                   mean_est_hyper_c,
                                                   rhat_hyper_c,
                                                   Mean_Fpar,
-                                                  mean_est_hyper_f_normal,
-                                                  log_mu_f,
-                                                  mean_est_hyper_f_log,
-                                                  rhat_hyper_f,
+                                                  #mean_est_hyper_f_normal,
+                                                  #log_mu_f,
+                                                  #mean_est_hyper_f_log,
+                                                  #rhat_hyper_f,
                                                   Mean_Epar, 
                                                   mean_est_hyper_e, 
                                                   rhat_hyper_e,
@@ -669,10 +670,11 @@ tic()
           
           
           
-          simulation.ee[[paste0("N_",conN,"_K_",conK,"_Retrievals_",conRet,"n_conFT_",con_nFT,"_Set_", n)]] <- simulation
-#          simulation.ee[[paste0("Benchmark Subject Pars")]] <- benchmarks_subject_pars
+          simulation.ee[[paste0("N_",conN,"_K_",conK,"_Retrievals_",conRet,"n_conFT_",con_nFT,"_Set_")]] <- simulation
+          simulation.ee[[paste0("Benchmark Subject Pars")]] <- benchmarks_subject_pars
+          simulation.ee[[paste0("Hyper Pars")]] <- hyper_pars
           simulation.ee[[paste0("Data")]] <- data
-         saveRDS(simulation.ee, file=paste0("Data_CS_EE/ComplexSpan_LKJ_EE_","N_",conN,"_K_",conK,"_Retrievals_",conRet, "n_conFT_",con_nFT,"_Set_", n,".RDS"))
+          saveRDS(simulation.ee, file=paste0("ComplexSpan_LKJ_EE_","N_",conN,"_K_",conK,"_Retrievals_",conRet, "n_conFT_",con_nFT,"_Set_",".RDS"))
 
 toc()
 
